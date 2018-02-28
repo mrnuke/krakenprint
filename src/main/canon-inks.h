@@ -429,6 +429,17 @@ static const canon_inkset_t canon_7_C14M14Y14c14m14y14_inkset[] = {
         {'k',1.0,&canon_4b_14l_ink},
 };
 
+static const canon_inkset_t canon_cli42_CMYk_std_inkset[] = {
+	{'C', 1.0, &canon_4b_6l_c_ink},
+	{'M', 1.0, &canon_4b_6l_c_ink},
+	{'Y', 1.0, &canon_4b_6l_c_ink},
+	{ 0,  0.0, NULL},
+	{ 0,  0.0, NULL},
+	{'k', 1.0, &canon_4b_6l_c_ink},
+	{ 0,  0.0, NULL},
+	{ 0,  0.0, NULL},
+};
+
 static const canon_inkset_t canon_9_K2_inkset[] = {
 	{0,0.0,NULL},
 	{0,0.0,NULL},

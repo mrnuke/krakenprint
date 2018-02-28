@@ -3486,6 +3486,14 @@ static const canon_mode_t canon_PIXMA_iX7000_modes[] = {
 };
 DECLARE_MODES(canon_PIXMA_iX7000,1);
 
+static const canon_mode_t canon_pixma_pro_100_modes[] = {
+{
+	600, 600, CANON_INK_CMYK, "600x600dpi",
+	N_("600x600 DPI"), INKSET(cli42_CMYk_std),
+	8, MODE_FLAG_EXTENDED_T, NULL, 1.0, 1.0, NULL, NULL, NULL, 2
+} };
+DECLARE_MODES(canon_pixma_pro_100, 0);
+
 /* mono uses bw=2 */
 static const canon_mode_t canon_PIXMA_Pro9000_modes[] = {
   /* Plain Modes */

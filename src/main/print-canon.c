@@ -3767,6 +3767,12 @@ canon_init_setPrintMode(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_m))
     return;
 
+  if (!strcmp(init->caps->name,"PIXMA Pro100")) {
+	  /* TODO: Move to printer-specific function pointer. */
+	  canon_cmd(v, "(m", 1, 0);
+	  return;
+  }
+
   arg_6d_a= canon_size_type(v,init->caps);
   if (!arg_6d_a)
     arg_6d_b= 1;
@@ -4561,7 +4567,7 @@ canon_init_setESC_P(const stp_vars_t *v, const canon_privdata_t *init)
     /* default: use upper tray of cassette with two trays, condition check later */
     arg_ESCP_9 = 0x01;
   }
-  else if ( !(strcmp(init->caps->name,"PIXMA E400")) || !(strcmp(init->caps->name,"PIXMA E460")) ||  !(strcmp(init->caps->name,"PIXMA E470")) || !(strcmp(init->caps->name,"PIXMA E480")) || !(strcmp(init->caps->name,"PIXMA E560")) || !(strcmp(init->caps->name,"PIXMA E3100")) || !(strcmp(init->caps->name,"PIXMA TS5000")) || !(strcmp(init->caps->name,"PIXMA TS6000")) || !(strcmp(init->caps->name,"PIXMA TS8000")) || !(strcmp(init->caps->name,"PIXMA G1000")) || !(strcmp(init->caps->name,"PIXMA G4000")) || !(strcmp(init->caps->name,"PIXMA MG2900")) || !(strcmp(init->caps->name,"PIXMA MG3500")) || !(strcmp(init->caps->name,"PIXMA MG3600")) || !(strcmp(init->caps->name,"PIXMA MG5500")) || !(strcmp(init->caps->name,"PIXMA MG5600")) || !(strcmp(init->caps->name,"PIXMA iP110")) || !(strcmp(init->caps->name,"PIXMA iP2800")) || !(strcmp(init->caps->name,"PIXMA iP8700")) || !(strcmp(init->caps->name,"PIXMA iX6800")) || !(strcmp(init->caps->name,"MAXIFY iB4000")) || !(strcmp(init->caps->name,"MAXIFY iB4100")) || !(strcmp(init->caps->name,"MAXIFY MB2000")) || !(strcmp(init->caps->name,"MAXIFY MB2100")) || !(strcmp(init->caps->name,"MAXIFY MB2300")) || !(strcmp(init->caps->name,"MAXIFY MB2700")) || !(strcmp(init->caps->name,"PIXMA MX470")) || !(strcmp(init->caps->name,"PIXMA MX490")) ) {
+  else if ( !(strcmp(init->caps->name,"PIXMA E400")) || !(strcmp(init->caps->name,"PIXMA E460")) ||  !(strcmp(init->caps->name,"PIXMA E470")) || !(strcmp(init->caps->name,"PIXMA E480")) || !(strcmp(init->caps->name,"PIXMA E560")) || !(strcmp(init->caps->name,"PIXMA E3100")) || !(strcmp(init->caps->name,"PIXMA TS5000")) || !(strcmp(init->caps->name,"PIXMA TS6000")) || !(strcmp(init->caps->name,"PIXMA TS8000")) || !(strcmp(init->caps->name,"PIXMA G1000")) || !(strcmp(init->caps->name,"PIXMA G4000")) || !(strcmp(init->caps->name,"PIXMA MG2900")) || !(strcmp(init->caps->name,"PIXMA MG3500")) || !(strcmp(init->caps->name,"PIXMA MG3600")) || !(strcmp(init->caps->name,"PIXMA MG5500")) || !(strcmp(init->caps->name,"PIXMA MG5600")) || !(strcmp(init->caps->name,"PIXMA iP110")) || !(strcmp(init->caps->name,"PIXMA iP2800")) || !(strcmp(init->caps->name,"PIXMA iP8700")) || !(strcmp(init->caps->name,"PIXMA iX6800")) || !(strcmp(init->caps->name,"MAXIFY iB4000")) || !(strcmp(init->caps->name,"MAXIFY iB4100")) || !(strcmp(init->caps->name,"MAXIFY MB2000")) || !(strcmp(init->caps->name,"MAXIFY MB2100")) || !(strcmp(init->caps->name,"MAXIFY MB2300")) || !(strcmp(init->caps->name,"MAXIFY MB2700")) || !(strcmp(init->caps->name,"PIXMA MX470")) || !(strcmp(init->caps->name,"PIXMA MX490")) || !(strcmp(init->caps->name,"PIXMA Pro100"))) {
     arg_ESCP_9 = 0xff;
   }
 
