@@ -200,6 +200,10 @@ static const char* const control_cmd_ackshort[] = {
   NULL
 };
 
+static const char* const control_cmd_none[] = {
+  NULL
+};
+
 static const char* const control_cmd_PIXMA_iP4000[] = {
 /*"SetTime=20060722092503", */         /*what is this for?*/
   "SetSilent=OFF",
@@ -2339,6 +2343,33 @@ static const canon_cap_t canon_model_capabilities[] =
     NULL,
     NULL,
     iP4500_channel_order
+  },
+  { /* Requisite redundant comment to self-explanatory code: Canon PIXMA Pro-100 */
+    .name = "PIXMA Pro100",
+    .model_id = 3,
+    .max_width = INCH(13),
+    .max_height = INCH(19),
+    .border_left = 10,
+    .border_right = 10,
+    .border_top = 9,
+    .border_bottom = 15,
+    .slotlist = &canon_PIXMA_Pro9000_slotlist,
+    .features = CANON_CAP_STD0 | CANON_CAP_px | CANON_CAP_r | CANON_CAP_rr
+		 | CANON_CAP_I | CANON_CAP_N
+		 | CANON_CAP_P | CANON_CAP_m | CANON_CAP_BORDERLESS
+		 | CANON_CAP_XML | CANON_CAP_K_SET_TIME,
+    .ESC_r_arg = 0,//0x62,
+    .ESC_l_len = 3,
+    .ESC_P_len = 9,
+    .CassetteTray_Opts = 0, /* Upper/Lower Cassette option */
+    .control_cmdlist = control_cmd_none,
+    .modelist = &canon_pixma_pro_100_modelist,
+    .paperlist = &canon_pixma_pro_100_paperlist,
+    .modeuselist = &canon_pixma_pro_100_modeuselist,
+    .lum_adjustment = NULL,
+    .hue_adjustment = NULL,
+    .sat_adjustment = NULL,
+    .channel_order = iP4500_channel_order
   },
   { /* Canon PIXMA Pro9000 */
     "PIXMA Pro9000", 3,          /*model, model_id*/

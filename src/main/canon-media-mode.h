@@ -12851,6 +12851,25 @@ static const canon_modeuse_t canon_PIXMA_MG8200_modeuses[] = {
 
 DECLARE_MODEUSES(canon_PIXMA_MG8200);
 
+
+static const char* canon_pixma_pro_100_modeuses_plain[] = {
+  "600x600dpi",
+  NULL
+};
+
+static const char* canon_pixma_pro_100_modeuses_pp_glossy[] = {
+  "600x600dpi_photo",
+  "1200x1200dpi_photohigh",
+  NULL
+};
+
+static const canon_modeuse_t canon_pixma_pro_100_modeuses[] = {
+  { "Plain",             canon_pixma_pro_100_modeuses_plain, 0 },
+  { "GlossyPaper",       canon_pixma_pro_100_modeuses_pp_glossy, 0 },
+};
+
+DECLARE_MODEUSES(canon_pixma_pro_100);
+
 /* ----------------------------------- Canon Pro9000 ----------------------------------- */
 
 static const char* canon_PIXMA_Pro9000_modeuses_plain[] = {

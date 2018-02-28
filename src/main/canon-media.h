@@ -1240,6 +1240,37 @@ static const canon_paper_t canon_PIXMA_iP9910_limited_papers[] = {
 };
 DECLARE_PAPERS(canon_PIXMA_iP9910_limited);
 
+static const canon_paper_t canon_pixma_pro_100_papers[] = {
+  {
+    .name = "Plain",
+    .text = N_ ("Plain Paper"),
+    .media_code_c = 0x00,
+    .media_code_l = 0x00,
+    .media_code_P = 0x00,
+    .media_code_w = 0x00,
+    .base_density = 0.00,
+    .k_lower_scale = 0.25,
+    .k_upper = 0.500,
+    .hue_adjustment = NULL,
+    .lum_adjustment = NULL,
+    .sat_adjustment = NULL,
+  }, {
+    .name = "GlossyPaper",
+    .text = N_ ("Glossy Photo Paper"),
+    .media_code_c = 0x05,
+    .media_code_l = 0x05,
+    .media_code_P = 0x44,
+    .media_code_w = 0x00,
+    .base_density = 0.00,
+    .k_lower_scale = 0.25,
+    .k_upper = 0.500,
+    .hue_adjustment = NULL,
+    .lum_adjustment = NULL,
+    .sat_adjustment = NULL,
+  },
+};
+DECLARE_PAPERS(canon_pixma_pro_100);
+
 /* PIXMA Pro9000 */
 static const canon_paper_t canon_PIXMA_Pro9000_papers[] = {
   { "Plain",		N_ ("Plain Paper"),			0x00,0x00,0x00,0x00,1.00, 0.25, 0.500, 0, 0, 0 },
