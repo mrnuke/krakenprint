@@ -233,10 +233,22 @@ static int analysiseight2twelve2(unsigned char* inbuffer,unsigned char* outbuffe
 }
 #endif
 
+static int decode_int8_two_complement(uint8_t val)
+{
+	int ret = val;
+
+	if (val & 0x80)
+		ret -= 256;
+
+	return ret;
+}
+
 /* reads a run length encoded block of raster data, decodes and uncompresses it */
-static int Raster(image_t* img,unsigned char* buffer,unsigned int len,unsigned char color_name,unsigned int maxw){
+static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
+		  unsigned char color_name,unsigned int maxw)
+{
 	color_t* color=get_color(img,color_name);
-        char* buf = (char*)buffer;
+	uint8_t *buf = buffer;
 	int size=0; /* size of unpacked buffer */
 	int cur_line=0; /* line relative to block begin */
 	unsigned char* dst=malloc(len*256); /* the destination buffer */
@@ -252,20 +264,16 @@ static int Raster(image_t* img,unsigned char* buffer,unsigned int len,unsigned c
 	   printf("no matching color for %c (0x%x, %i) in the database => ignoring %i bytes\n",color_name,color_name,color_name, len);
 	   } */
 	if (DEBUG) {
-	  fprintf(fout,"DEBUG enter Raster len=%i,color=%c\n",len,color_name);
+	  fprintf(fout,"DEBUG enter Raster len=%z,color=%c\n",len,color_name);
 	}
 
 	/* decode pack bits */
-	while( len > 0){ /* why does this not work: because unsigned integer wraps! */
-		int c = *buf;
-		++buf;
-		--len;
+	while (len-- > 0) {
+		int c = decode_int8_two_complement(*buf++);
 
 		/*printf("DEBUG top of while loop len=%i\n",len);*/
 
-		if(c >= 128)
-			c -=256;
-		if(c== -128){ /* end of line => decode and copy things here */
+		if(c== -128){/* end of line => decode and copy things here */
 		  /*printf("DEBUG end of line---decode and copy things here\n");*/
 			/* create new list entry */
 			if(color && size){
