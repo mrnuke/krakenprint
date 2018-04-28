@@ -18,6 +18,7 @@
  *
  *****************************************************************************/
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -29,6 +30,65 @@
 #define DEBUG 0 /* 1 for debugging only: all output goes to stderr */
 
 #include "pixma_parse.h"
+
+static void hexdump_offset(const void *memory,	size_t length, size_t start)
+{
+	uint8_t *line;
+	int all_zero = 0;
+	int all_one = 0;
+	size_t i, num_bytes, skip;
+
+	skip = start & 0xf;
+	start &= ~0xf;
+
+	for (i = 0; i < length; i += num_bytes) {
+		int j;
+		num_bytes = (length + skip - i) < 16 ? (length + skip - i) : 16;
+		line = ((uint8_t *)memory) + i - skip;
+
+		all_zero++;
+		all_one++;
+		for (j = 0; j < num_bytes; j++) {
+			if (line[j] != 0) {
+				all_zero = 0;
+				break;
+			}
+		}
+
+		for (j = 0; j < num_bytes; j++) {
+			if (line[j] != 0xff) {
+				all_one = 0;
+				break;
+			}
+		}
+
+		if ((all_zero < 2) && (all_one < 2)) {
+			printf("%.04zx:", i + start);
+			for (j = 0; j < skip; j++)
+				printf("   ");
+			for (; j < num_bytes; j++)
+				printf(" %02x", line[j]);
+			for (; j < 16; j++)
+				printf("   ");
+			printf("  ");
+			for (j = 0; j < skip; j++)
+				printf(" ");
+			for (; j < num_bytes; j++)
+				printf("%c", isprint(line[j]) ? line[j] : '.');
+			printf("\n");
+		} else if ((all_zero == 2) || (all_one == 2)) {
+			printf("...\n");
+		}
+
+		num_bytes -= skip;
+		skip = 0;
+	}
+}
+
+static void hexdump(const void *memory, size_t length)
+{
+	hexdump_offset(memory, length, 0);
+}
 
 /*TODO:
   1. change color loops to search for each named color rather than using a predefined order.
