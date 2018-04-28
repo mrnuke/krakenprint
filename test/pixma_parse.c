@@ -21,6 +21,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
@@ -95,6 +96,36 @@ static void hexdump(const void *memory, size_t length)
   2. keep iP6700 workaround, but check what happens with the real printer.
 */
 
+/*
+ * Buffer for unknown bytes. Do not print one line per unknown byte. This
+ * clutters the output horifically.
+ */
+static uint8_t unknown_byte_buf[4096];
+static unsigned long unknown_byte_fpos = 0;
+static size_t num_unknown_bytes = 0;
+
+static void unknown_byte_buf_flush(void)
+{
+	if (num_unknown_bytes == 0)
+		return;
+
+	stp_deprintf(DBG, "UNKNOWN BYTES @ %lu:\n", unknown_byte_fpos);
+	stp_hexdump(DBG, unknown_byte_buf, num_unknown_bytes);
+
+	num_unknown_bytes = 0;
+	unknown_byte_fpos = 0;
+}
+
+static void unknown_byte_buf_add(uint8_t data, unsigned long pos)
+{
+	if (unknown_byte_fpos == 0)
+		unknown_byte_fpos = pos;
+
+	unknown_byte_buf[num_unknown_bytes++] = data;
+
+	if (num_unknown_bytes >= sizeof(unknown_byte_buf))
+		unknown_byte_buf_flush();
+}
 
 /* nextcmd(): find a command in a printjob
  * commands in the printjob start with either ESC[ or ESC(
@@ -114,9 +145,12 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 {
 	unsigned char c1,c2;
 	unsigned int startxml, endxml;
+	bool is_unknown_byte = 0;
+
 	if (feof(infile))
 		return -1;
 	while (!feof(infile)){
+		is_unknown_byte = false;
 		c1 = fgetc(infile);
 		if(feof(infile)) /* NORMAL EOF */
 			return 1;
@@ -137,6 +171,7 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 		  }
 		  /* no alternatives yet */
 		}else if (c1 == 27 ){  /* A new ESC command */
+			unknown_byte_buf_flush();
 			c2 = fgetc(infile);
 			if(feof(infile))
 				return 1;
@@ -163,9 +198,13 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 		}else if(c1==0x0c){ /* Form Feed */
 			printf("-->Form Feed\n");
 		}else{
-			printf("UNKNOWN BYTE 0x%x @ %lu\n",c1,ftell(infile));
+			unknown_byte_buf_add(c1, ftell(infile));
+			is_unknown_byte = true;
 		}
+		if (!is_unknown_byte)
+			unknown_byte_buf_flush();
 	}
+	unknown_byte_buf_flush();
 	return -1;
 }
 
