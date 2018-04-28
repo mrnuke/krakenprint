@@ -95,8 +95,6 @@ static void hexdump(const void *memory, size_t length)
   2. keep iP6700 workaround, but check what happens with the real printer.
 */
 
-/* redirection for debug output */
-FILE* fout;
 
 /* nextcmd(): find a command in a printjob
  * commands in the printjob start with either ESC[ or ESC(
@@ -128,13 +126,13 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 		    /* start */
 		    startxml=startxmllen-1;
 		    fread(buf,1,startxml,infile); /* 1 less than startxmllen */
-		    fprintf(fout,"nextcmd: read starting XML %d %d\n", *xml_read, startxml);
+		    printf("nextcmd: read starting XML %d %d\n", *xml_read, startxml);
 		    *xml_read=1;
 		  }else if (*xml_read==1) {
 		    /* end */
 		    endxml=endxmllen-1;
 		    fread(buf,1,endxml,infile); /* 1 less than endxmllen */
-		    fprintf(fout,"nextcmd: read ending XML %d %d\n", *xml_read, endxml);
+		    printf("nextcmd: read ending XML %d %d\n", *xml_read, endxml);
 		    *xml_read=2;
 		  }
 		  /* no alternatives yet */
@@ -152,20 +150,20 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 				if (*cnt){  /* read arguments */
 					unsigned int read;
 					if((read=fread(buf,1,*cnt,infile)) != *cnt){
-						fprintf(fout,"nextcmd: read error - not enough data %d %d\n", read, *cnt);
+						printf("nextcmd: read error - not enough data %d %d\n", read, *cnt);
 						return -1;
 					}
 				}
 				return 0;
 			}else if(c2 == '@'){ /* ESC@ */
-				fprintf(fout,"ESC @ Return to neutral mode\n");
+				printf("ESC @ Return to neutral mode\n");
 			} else {
-				fprintf(fout,"unknown byte following ESC %x \n",c2);
+				printf("unknown byte following ESC %x \n",c2);
 			}
 		}else if(c1==0x0c){ /* Form Feed */
-			fprintf(fout,"-->Form Feed\n");
+			printf("-->Form Feed\n");
 		}else{
-			fprintf(fout,"UNKNOWN BYTE 0x%x @ %lu\n",c1,ftell(infile));
+			printf("UNKNOWN BYTE 0x%x @ %lu\n",c1,ftell(infile));
 		}
 	}
 	return -1;
@@ -201,7 +199,7 @@ static int valid_color(unsigned char color){
 	for(i=0;i<sizeof(valid_colors) / sizeof(valid_colors[0]);i++)
 		if(valid_colors[i] == color)
 			return 1;
-	fprintf(fout," [valid_color] unknown color 0x%x\n",color);
+	printf(" [valid_color] unknown color 0x%x\n",color);
 	return 0;
 }
 
@@ -324,7 +322,7 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 	   printf("no matching color for %c (0x%x, %i) in the database => ignoring %i bytes\n",color_name,color_name,color_name, len);
 	   } */
 	if (DEBUG) {
-	  fprintf(fout,"DEBUG enter Raster len=%z,color=%c\n",len,color_name);
+	  printf("DEBUG enter Raster len=%zd,color=%c\n",len,color_name);
 	}
 
 	/* decode pack bits */
@@ -522,9 +520,9 @@ static void write_line(image_t*img,FILE* fp,int pos_y){
 		    /*if (img->color[i].value != 0)
 		      printf("what pixel values for color %d: %x\n",i,img->color[i].value);*/
 		    if (i>7){
-		      fprintf(fout,"getting pixel values for color %d\n",i);/* only going 0 1 2 4 5 --- missing i>7 bugger! */
+		      printf("getting pixel values for color %d\n",i);/* only going 0 1 2 4 5 --- missing i>7 bugger! */
 		      /*img->color[i].value = 1;*/
-		      fprintf(fout,"color %c has value %d\n",img->color[i].name,img->color[i].value);
+		      printf("color %c has value %d\n",img->color[i].name,img->color[i].value);
 		    }
 		    /* add 0x80 to colors where 0x80 is seen added in inkset */
 		  }
@@ -585,7 +583,7 @@ static void write_line(image_t*img,FILE* fp,int pos_y){
 
 	/* output line */
 	if((written = fwrite(line,img->width,3,fp)) != 3) {
-		fprintf(fout,"fwrite failed %u vs %u\n",written,img->width*3);
+		printf("fwrite failed %u vs %u\n",written,img->width*3);
 	}
 	free(line);
 }
@@ -668,7 +666,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 	unsigned int xml_read;
 	xml_read=0;
 
-	fprintf(fout,"------- parsing the printjob -------\n");
+	printf("------- parsing the printjob -------\n");
 	while(!returnv && !feof(in)){
 		unsigned char cmd;
 		unsigned int cnt = 0;
@@ -676,53 +674,53 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 			break;
 		switch(cmd){
 			case 'c':
-				fprintf(fout,"ESC (c set media (len=%i):\n",cnt);
-				fprintf(fout," model id %x bw %x",buf[0]>> 4,buf[0]&0xf);
-				fprintf(fout," media %x",buf[1]);
-				fprintf(fout," direction %x quality %x\n",(buf[2]>>4)&3 ,buf[2]&0xf);
+				printf("ESC (c set media (len=%i):\n",cnt);
+				printf(" model id %x bw %x",buf[0]>> 4,buf[0]&0xf);
+				printf(" media %x",buf[1]);
+				printf(" direction %x quality %x\n",(buf[2]>>4)&3 ,buf[2]&0xf);
 				break;
 			case 'K':
 				if(buf[1]==0x1f){
-				  fprintf(fout,"ESC [K go to command mode\n");
+				  printf("ESC [K go to command mode\n");
 					do{
 						fgets((char*)buf,0xFFFF,in);
-						fprintf(fout," %s",buf);
+						printf(" %s",buf);
 					}while(strcmp((char*)buf,"BJLEND\n"));
 				}else if(cnt == 2 && buf[1]==0x0f){
-					fprintf(fout,"ESC [K reset printer\n");
+					printf("ESC [K reset printer\n");
 					img->width=0;
 					img->height=0;
 				}else{
-					fprintf(fout,"ESC [K unsupported param (len=%i): %x\n",cnt,buf[1]);
+					printf("ESC [K unsupported param (len=%i): %x\n",cnt,buf[1]);
 				}
 				break;
 			case 'b':
-				fprintf(fout,"ESC (b set data compression (len=%i): %x\n",cnt,buf[0]);
+				printf("ESC (b set data compression (len=%i): %x\n",cnt,buf[0]);
 				break;
 			case 'I':
-				fprintf(fout,"ESC (I select data transmission (len=%i): ",cnt);
-				if(buf[0]==0)fprintf(fout,"default");
-				else if(buf[0]==1)fprintf(fout,"multi raster");
-				else fprintf(fout,"unknown 0x%x %i",buf[0],buf[0]);
-				fprintf(fout,"\n");
+				printf("ESC (I select data transmission (len=%i): ",cnt);
+				if(buf[0]==0)printf("default");
+				else if(buf[0]==1)printf("multi raster");
+				else printf("unknown 0x%x %i",buf[0],buf[0]);
+				printf("\n");
 				break;
 			case 'l':
-				fprintf(fout,"ESC (l select paper loading (len=%i):\n",cnt);
-				fprintf(fout," model id 0x%x ",buf[0]>>4);
-				fprintf(fout," source 0x%x",buf[0]&15);
+				printf("ESC (l select paper loading (len=%i):\n",cnt);
+				printf(" model id 0x%x ",buf[0]>>4);
+				printf(" source 0x%x",buf[0]&15);
 				if ( cnt == 3 ) {
-				  fprintf(fout," media: %x",buf[1]);
-				  fprintf(fout," paper gap: %x\n",buf[2]);
+				  printf(" media: %x",buf[1]);
+				  printf(" paper gap: %x\n",buf[2]);
 				} else
-				  fprintf(fout," media: %x\n",buf[1]);
+				  printf(" media: %x\n",buf[1]);
 				break;
 			case 'd':
 				img->xres = (buf[0]<<8)|buf[1];
 				img->yres = (buf[2]<<8)|buf[3];
-				fprintf(fout,"ESC (d set raster resolution (len=%i): %i x %i\n",cnt,img->xres,img->yres);
+				printf("ESC (d set raster resolution (len=%i): %i x %i\n",cnt,img->xres,img->yres);
 				break;
 			case 't':
-			  fprintf(fout,"ESC (t set image cnt %i\n",cnt);
+			  printf("ESC (t set image cnt %i\n",cnt);
 				if(buf[0]>>7){
 				        /* usual order */
 				        char order[]="CMYKcmyk";
@@ -741,23 +739,23 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				        /* char order[]="KCcMmYykRHGABDEFIJLMNOPQSTUVWXZabdef"; */
 					/* int black_found = 0; */
 					num_colors = (cnt - 3)/3;
-					fprintf(fout," bit_info: using detailed color settings for max %i colors\n",num_colors);
+					printf(" bit_info: using detailed color settings for max %i colors\n",num_colors);
 					if(buf[1]==0x80)
-					  fprintf(fout," format: BJ indexed color image format\n");
+					  printf(" format: BJ indexed color image format\n");
                                         else if(buf[1]==0x00)
-						fprintf(fout," format: iP8500 flag set, BJ indexed color image format\n");
+						printf(" format: iP8500 flag set, BJ indexed color image format\n");
                                         else if(buf[1]==0x90)
-						fprintf(fout," format: Pro9500 flag set, BJ indexed color image format\n");
+						printf(" format: Pro9500 flag set, BJ indexed color image format\n");
 					else{
-						fprintf(fout," format: settings not supported 0x%x\n",buf[1]);
+						printf(" format: settings not supported 0x%x\n",buf[1]);
 						/* returnv = -2; */
 					}
 					if(buf[2]==0x1)
-					        fprintf(fout," ink: BJ indexed setting, also for iP8500 flag\n");
+					        printf(" ink: BJ indexed setting, also for iP8500 flag\n");
 					else if(buf[2]==0x4)
-					        fprintf(fout," ink: Pro series setting \n");
+					        printf(" ink: Pro series setting \n");
 					else{
-						fprintf(fout," ink: settings not supported 0x%x\n",buf[2]);
+						printf(" ink: settings not supported 0x%x\n",buf[2]);
 						/* returnv = -2; */
 					}
 
@@ -804,10 +802,10 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					    }
 					    */
 					    /* %c*/
-					    fprintf(fout," Color %c Compression: %i bpp %i level %i\n",img->color[i].name,
+					    printf(" Color %c Compression: %i bpp %i level %i\n",img->color[i].name,
 						   img->color[i].compression,img->color[i].bpp,img->color[i].level);
 					  }else{
-					    fprintf(fout," Color %i out of bounds!\n", i);
+					    printf(" Color %i out of bounds!\n", i);
 					    /*printf(" Color ignoring setting %x %x %x\n",buf[3+i*3],buf[3+i*3+1],buf[3+i*3+2]);*/
 					  }
 
@@ -815,7 +813,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 
 
 				}else if(buf[0]==0x1 && buf[1]==0x0 && buf[2]==0x1){
-					fprintf(fout," 1bit-per pixel\n");
+					printf(" 1bit-per pixel\n");
 					num_colors = cnt*3; /*no idea yet! 3 for iP4000 */
 					/*num_colors=9;*/
 					/*for(i=0;i<MAX_COLORS;i++){*/
@@ -834,20 +832,20 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 						img->color[i].level=2;
 						img->color[i].density = 255;
 						/*add color printout for this type also %c */
-						fprintf(fout," Color %c Compression: %i bpp %i level %i\n",img->color[i].name,
+						printf(" Color %c Compression: %i bpp %i level %i\n",img->color[i].name,
 						       img->color[i].compression,img->color[i].bpp,img->color[i].level);
 					  }else{
-					    fprintf(fout," Color %i out of bounds!", i);
+					    printf(" Color %i out of bounds!", i);
 						/*printf(" Color ignoring setting %x %x %x\n",buf[3+i*3],buf[3+i*3+1],buf[3+i*3+2]);*/
 					  }
 					}
 				}else{
-					fprintf(fout," bit_info: unknown settings 0x%x 0x%x 0x%x\n",buf[0],buf[1],buf[2]);
+					printf(" bit_info: unknown settings 0x%x 0x%x 0x%x\n",buf[0],buf[1],buf[2]);
 					/* returnv=-2; */
 				}
 				break;
 			case 'L':
-				fprintf(fout,"ESC (L set component order for F raster command (len=%i): ",cnt);
+				printf("ESC (L set component order for F raster command (len=%i): ",cnt);
 				img->color_order=calloc(1,cnt+1);
 				/* check if the colors are sane => the iP4000 driver appends invalid bytes in the highest resolution mode */
 				for(i=0;i<cnt;i++){
@@ -859,21 +857,21 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				    /*}*/
 				    /*else {*/
 				      buf[i]=buf[i]-0x60;
-				      fprintf(fout,"subtracting 0x60 to give [corrected]: %c\n", buf[i]);
+				      printf("subtracting 0x60 to give [corrected]: %c\n", buf[i]);
 				    }
 				  else
-				    fprintf(fout,"found valid color char: %c\n",buf[i]);
+				    printf("found valid color char: %c\n",buf[i]);
 				}
 				cnt = i;
 				memcpy(img->color_order,buf,cnt);
-				fprintf(fout,"%s\n",img->color_order);
+				printf("%s\n",img->color_order);
 				img->num_colors = cnt;
 				img->cur_color=0;
 				break;
 			case 'p':
-				fprintf(fout,"ESC (p set extended margin (len=%i):\n",cnt);
-                                fprintf(fout," printed length %i left %i\n",((buf[0]<<8 )+buf[1]) *6 / 5 - 1,(buf[2]<<8) + buf[3]);
-                                fprintf(fout," printed width %i top %i\n",((buf[4]<<8 )+buf[5]) * 6 / 5 - 1,(buf[6]<<8) + buf[7]);
+				printf("ESC (p set extended margin (len=%i):\n",cnt);
+                                printf(" printed length %i left %i\n",((buf[0]<<8 )+buf[1]) *6 / 5 - 1,(buf[2]<<8) + buf[3]);
+                                printf(" printed width %i top %i\n",((buf[4]<<8 )+buf[5]) * 6 / 5 - 1,(buf[6]<<8) + buf[7]);
 
                                 if(cnt > 8){
 					int unit = (buf[12] << 8)| buf[13];
@@ -885,30 +883,30 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					int paper_top = read_uint32(buf+34);
 					unsigned int paper_width = read_uint32(buf+38);
 					unsigned int paper_length = read_uint32(buf+42);
-                                        fprintf(fout," unknown %i\n",read_uint32(buf+8));
-                                        fprintf(fout," unit %i [1/in]\n",unit);
-                                        fprintf(fout," area_right %i %.1f mm\n",area_right,area_right * 25.4 / unit);
-                                        fprintf(fout," area_top %i %.1f mm\n",area_top,area_top * 25.4 / unit);
-                                        fprintf(fout," area_width %u %.1f mm\n",area_width, area_width * 25.4 / unit);
-                                        fprintf(fout," area_length %u %.1f mm\n",area_length,area_length * 25.4 / unit);
-                                        fprintf(fout," paper_right %i %.1f mm\n",paper_right,paper_right * 25.4 / unit);
-                                        fprintf(fout," paper_top %i %.1f mm\n",paper_top,paper_top * 25.4 / unit);
-                                        fprintf(fout," paper_width %u %.1f mm\n",paper_width,paper_width * 25.4 / unit);
-                                        fprintf(fout," paper_length %u %.1f mm\n",paper_length,paper_length * 25.4 / unit);
+                                        printf(" unknown %i\n",read_uint32(buf+8));
+                                        printf(" unit %i [1/in]\n",unit);
+                                        printf(" area_right %i %.1f mm\n",area_right,area_right * 25.4 / unit);
+                                        printf(" area_top %i %.1f mm\n",area_top,area_top * 25.4 / unit);
+                                        printf(" area_width %u %.1f mm\n",area_width, area_width * 25.4 / unit);
+                                        printf(" area_length %u %.1f mm\n",area_length,area_length * 25.4 / unit);
+                                        printf(" paper_right %i %.1f mm\n",paper_right,paper_right * 25.4 / unit);
+                                        printf(" paper_top %i %.1f mm\n",paper_top,paper_top * 25.4 / unit);
+                                        printf(" paper_width %u %.1f mm\n",paper_width,paper_width * 25.4 / unit);
+                                        printf(" paper_length %u %.1f mm\n",paper_length,paper_length * 25.4 / unit);
 					img->top = (float)area_top / unit;
 					img->left = (float)area_top / unit;
                                 }
 				break;
 			case '$':
-				fprintf(fout,"ESC ($ set duplex (len=%i)\n",cnt);
+				printf("ESC ($ set duplex (len=%i)\n",cnt);
 				break;
 			case 'J':
-				fprintf(fout,"ESC (J select number of raster lines per block (len=%i): %i\n",cnt,buf[0]);
+				printf("ESC (J select number of raster lines per block (len=%i): %i\n",cnt,buf[0]);
 				img->lines_per_block=buf[0];
 				break;
 			case 'F':
 				if(verbose)
-					fprintf(fout,"ESC (F raster block (len=%i):\n",cnt);
+					printf("ESC (F raster block (len=%i):\n",cnt);
 				if((returnv = Raster(img,buf,cnt,img->color_order[img->cur_color],maxw)))
 					break;
 				++img->cur_color;
@@ -918,17 +916,17 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				}
 				break;
 			case 'q':
-				fprintf(fout,"ESC (q set page id (len=%i):%i\n",cnt,buf[0]);
+				printf("ESC (q set page id (len=%i):%i\n",cnt,buf[0]);
 				break;
 			case 'r':
-				fprintf(fout,"ESC (r printer specific command (len=%i): ",cnt);
+				printf("ESC (r printer specific command (len=%i): ",cnt);
 				for(i=0;i<cnt;i++)
-					fprintf(fout,"0x%x ",buf[i]);
-				fprintf(fout,"\n");
+					printf("0x%x ",buf[i]);
+				printf("\n");
 				break;
 			case 'A':
 				if(verbose)
-					fprintf(fout,"ESC (A raster line (len=%i): color %c\n",cnt,buf[0]);
+					printf("ESC (A raster line (len=%i): color %c\n",cnt,buf[0]);
 				/* the single line rasters are not terminated by 0x80 => do it here
 				 * instead of 0x80 every raster A command is followed by a 0x0d byte
 				 * the selected color is stored in the first byte
@@ -936,13 +934,13 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				buf[cnt]=0x80;
 				returnv = Raster(img,buf+1,cnt,buf[0],maxw);
 				if (fgetc(in)!=0x0d){
-					fprintf(fout,"Raster A not terminated by 0x0d\n");
+					printf("Raster A not terminated by 0x0d\n");
 					returnv=-4;
 				}
 				break;
 			case 'e': /* Raster skip */
 				if(verbose)
-					fprintf(fout,"ESC (e advance (len=%i): %i\n",cnt,buf[0]*256+buf[1]);
+					printf("ESC (e advance (len=%i): %i\n",cnt,buf[0]*256+buf[1]);
 				if(img->lines_per_block){
 					img->height += (buf[0]*256+buf[1])*img->lines_per_block;
 					img->cur_color=0;
@@ -950,22 +948,22 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					img->height += (buf[0]*256+buf[1]);
 				break;
 			default: /* Last but not least completely unknown commands */
-				fprintf(fout,"ESC (%c UNKNOWN (len=%i)\n",cmd,cnt);
+				printf("ESC (%c UNKNOWN (len=%i)\n",cmd,cnt);
 				for(i=0;i<cnt;i++)
-					fprintf(fout," 0x%x",buf[i]);
-				fprintf(fout,"\n");
+					printf(" 0x%x",buf[i]);
+				printf("\n");
 
 		}
 	}
 
-	fprintf(fout,"-------- finished parsing   --------\n");
+	printf("-------- finished parsing   --------\n");
 	if(returnv < -2){ /* was < 0 :  work around to see what we get */
-		fprintf(fout,"error: parsing the printjob failed error %i\n",returnv);
+		printf("error: parsing the printjob failed error %i\n",returnv);
 	} else {
 
-		fprintf(fout,"created bit image with width %i height %i\n",img->width,img->height);
+		printf("created bit image with width %i height %i\n",img->width,img->height);
 		if(maxh > 0){
-			fprintf(fout,"limiting height to %u\n",maxh);
+			printf("limiting height to %u\n",maxh);
 			img->height=maxh;
 		}
 
@@ -974,7 +972,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
          	*/
 		if(out)
 			write_ppm(img,out);
-		fprintf(fout,"dots: %u\n",img->dots);
+		printf("dots: %u\n",img->dots);
 
 	}
 	/* deallocate resources */
@@ -1009,8 +1007,6 @@ static void display_usage(void){
 	printf(" -h: display this help\n");
 }
 
-
-
 int main(int argc,char* argv[]){
 	int verbose = 0;
 	unsigned int maxh=0;
@@ -1023,11 +1019,6 @@ int main(int argc,char* argv[]){
 
 	startxmllen=680; // 1086; 732; 680; embedded parameters varies with driver -- TODO: parse XML separately
 	endxmllen=263; // default value
-
-	if (DEBUG)
-	  fout = stderr; /* unbuffered */
-	else
-	  fout = stdout; /* buffered */
 
 	printf("pixma_parse - parser for Canon BJL printjobs (c) 2005-2007 Sascha Sommer <saschasommer@freenet.de>\n");
 
