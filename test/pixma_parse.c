@@ -109,8 +109,8 @@ static void unknown_byte_buf_flush(void)
 	if (num_unknown_bytes == 0)
 		return;
 
-	stp_deprintf(DBG, "UNKNOWN BYTES @ %lu:\n", unknown_byte_fpos);
-	stp_hexdump(DBG, unknown_byte_buf, num_unknown_bytes);
+	printf("UNKNOWN BYTES @ %lu:\n", unknown_byte_fpos);
+	hexdump(unknown_byte_buf, num_unknown_bytes);
 
 	num_unknown_bytes = 0;
 	unknown_byte_fpos = 0;
@@ -988,10 +988,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				break;
 			default: /* Last but not least completely unknown commands */
 				printf("ESC (%c UNKNOWN (len=%i)\n",cmd,cnt);
-				for(i=0;i<cnt;i++)
-					printf(" 0x%x",buf[i]);
-				printf("\n");
-
+				hexdump(buf, cnt);
 		}
 	}
 
