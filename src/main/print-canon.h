@@ -41,6 +41,7 @@
 #define CANON_INK_CcMmYyKk   128
 #define CANON_INK_cmy        256
 #define CANON_INK_CcMmYy     512
+#define CANON_INK_CMYcmkHL   1024
 
 #define CANON_INK_CcMmYyKk_MASK (CANON_INK_CcMmYK|CANON_INK_CcMmYKk|CANON_INK_CcMmYyK|CANON_INK_CcMmYyKk) /* Ink is CcMmYyKk */
 #define CANON_INK_CMYKk_MASK    (CANON_INK_CMYKk|CANON_INK_CcMmYyKk_MASK) /* Ink is CMYKk */
@@ -62,6 +63,7 @@ static struct canon_inktype_s {
     const char* name;
     const char* text;
 } canon_inktypes[] = {
+    {CANON_INK_CMYcmkHL,8,"PhotoCMYK-gray","Photo CMYcmkHL Color"},
     {CANON_INK_CcMmYyKk,8,"PhotoCMYKk","Photo CcMmYyKk Color"},  /* Gernot: inserted */
     {CANON_INK_CcMmYyK,7,"PhotoCMYK","Photo CcMmYyK Color"},
     {CANON_INK_CcMmYKk,7,"PhotoCMYKk","Photo CcMmYKk Color"},  /* Gernot: inserted */

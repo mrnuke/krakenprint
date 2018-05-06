@@ -3494,7 +3494,7 @@ static const canon_mode_t canon_pixma_pro_100_modes[] = {
       { 600, 600, CANON_INK_CMYK, "600x600dpi_photo",
       N_("600x600 DPI PHOTO"), INKSET(cli42),
       8, MODE_FLAG_EXTENDED_T, NULL,1.0,1.0,NULL,NULL,NULL,2},
-      { 1200, 1200, CANON_INK_CMYK, "1200x1200dpi_photohigh" ,
+      { 1200, 1200, CANON_INK_CMYcmkHL, "1200x1200dpi_photohigh" ,
       N_("1200x1200 DPI PHOTO HIGH"), INKSET(cli42),
       8, MODE_FLAG_EXTENDED_T, NULL,1.0,1.0,NULL,NULL,NULL,3},
 };
