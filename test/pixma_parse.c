@@ -399,6 +399,23 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 	return 0;
 }
 
+static int raster_add_lines(image_t* img, uint8_t *buffer, ssize_t len)
+{
+	int ret, color;
+
+	color = img->color_order[img->cur_color];
+	ret = Raster(img, buffer, len, color);
+	if(ret)
+		return ret;
+
+	++img->cur_color;
+	if(img->cur_color >= img->num_colors){
+		img->cur_color=0;
+		img->height+=img->lines_per_block;
+	}
+
+	return 0;
+}
 
 /* checks if the buffer contains a pixel definition at the given x and y position */
 static inline int inside_range(color_t* c,int x,int y){
@@ -776,13 +793,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 			case 'F':
 				if(verbose)
 					printf("ESC (F raster block (len=%i):\n",cnt);
-				if((returnv = Raster(img,buf,cnt,img->color_order[img->cur_color])))
-					break;
-				++img->cur_color;
-				if(img->cur_color >= img->num_colors){
-					img->cur_color=0;
-					img->height+=img->lines_per_block;
-				}
+				raster_add_lines(img, buf, cnt);
 				break;
 			case 'q':
 				printf("ESC (q set page id (len=%i):%i\n",cnt,buf[0]);
@@ -815,6 +826,12 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					img->cur_color=0;
 				}else
 					img->height += (buf[0]*256+buf[1]);
+				break;
+			case 'N':
+				if(verbose)
+					printf("ESC (N raster block (len=%i):\n", cnt);
+				/* On ESC (N, the first byte is 'F'. Skip it. */
+				raster_add_lines(img, buf + 1, cnt - 1);
 				break;
 			default: /* Last but not least completely unknown commands */
 				printf("ESC (%c UNKNOWN (len=%i)\n",cmd,cnt);
