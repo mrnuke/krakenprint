@@ -127,6 +127,28 @@ static void unknown_byte_buf_add(uint8_t data, unsigned long pos)
 		unknown_byte_buf_flush();
 }
 
+static size_t next_cmd_len(FILE *infile, uint8_t cmd)
+{
+	int hi, lo;
+	size_t len;
+
+	/* Most commands use 16-bit little endian length fileds */
+	lo = fgetc(infile);
+	hi = fgetc(infile);
+
+	len = (hi << 8) | lo;
+
+	if (cmd == 'N') {
+		/* Certain data commands use 32-bit little endian length*/
+		lo = fgetc(infile);
+		hi = fgetc(infile);
+
+		len |= (hi << 24) | (lo << 16);
+	}
+
+	return len;
+}
+
 /* nextcmd(): find a command in a printjob
  * commands in the printjob start with either ESC[ or ESC(
  * ESC@ (go to neutral mode) and 0xc (form feed) are handled directly
@@ -177,11 +199,10 @@ static int nextcmd( FILE *infile,unsigned char* cmd,unsigned char *buf, unsigned
 				return 1;
 			if (c2=='[' || c2=='(' ){   /* ESC[ or ESC( command */
 				*cmd = fgetc(infile);    /* read command type  (1 byte) */
+				*cnt = next_cmd_len(infile, *cmd);
+
 				if(feof(infile))
 					return 1;
-				c1 = fgetc(infile); /* read size 16 bit little endian */
-				c2 = fgetc(infile);
-				*cnt = c1 + (c2<<8);
 				if (*cnt){  /* read arguments */
 					unsigned int read;
 					if((read=fread(buf,1,*cnt,infile)) != *cnt){
