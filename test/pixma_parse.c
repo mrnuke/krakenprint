@@ -239,20 +239,6 @@ static color_t* get_color(image_t* img,char name){
 	return NULL;
 }
 
-#if 0
-/* return pointer to color info structure matching name less 0x80 */
-static color_t* get_color2(image_t* img,char name){
-	int i;
-	for(i=0;i<MAX_COLORS;i++) {
-	  /*printf("get_color2: %i -- name=%c\n",i,img->color[i].name);*/
-	  if(img->color[i].name==(name)) { /* add 0x80 to get the hex value in the inkset */
-	    /*printf("get_color2: %i returning for %c\n",i,img->color[i].name);*/
-	    return &(img->color[i]);
-	  }
-	}
-	return NULL;
-}
-#endif
 
 static int valid_color(unsigned char color){
 	int i;
@@ -292,28 +278,6 @@ static int eight2twelve(unsigned char* inbuffer,unsigned char* outbuffer,int num
 	return s.buf_ptr-s.buf;
 }
 
-#if 0
-static int analysiseight2twelve(unsigned char* inbuffer,unsigned char* outbuffer,int num_bytes,int outbuffer_size){
-	PutBitContext s;
-	int maxlevels;
-	int maxnum;
-	int read_pos=0;
-	init_put_bits(&s, outbuffer,outbuffer_size);
-	while(read_pos < num_bytes){
-		unsigned short value=Table5Level[inbuffer[read_pos]];
-		++read_pos;
-		/*put_bits(&s,12,value);*/
-		if (value>125) {
-		  maxlevels+=1;
-		  if (value>maxnum) {
-		    maxnum=value;
-		  }
-		}
-	}
-	/*return s.buf_ptr-s.buf;*/
-	return maxnum;
-}
-#endif
 
 /* decompression routine for 3 4-bit pixels of 6 levels each */
 static int eight2twelve2(unsigned char* inbuffer,unsigned char* outbuffer,int num_bytes,int outbuffer_size){
@@ -328,28 +292,6 @@ static int eight2twelve2(unsigned char* inbuffer,unsigned char* outbuffer,int nu
 	return s.buf_ptr-s.buf;
 }
 
-#if 0
-static int analysiseight2twelve2(unsigned char* inbuffer,unsigned char* outbuffer,int num_bytes,int outbuffer_size){
-	PutBitContext s;
-	int maxlevels;
-	int maxnum;
-	int read_pos=0;
-	init_put_bits(&s, outbuffer,outbuffer_size);
-	while(read_pos < num_bytes){
-		unsigned short value=Table6Level[inbuffer[read_pos]];
-		++read_pos;
-		/*put_bits(&s,12,value);*/
-		if (value>216) {
-		  maxlevels+=1;
-		  if (value>maxnum) {
-		    maxnum=value;
-		  }
-		}
-	}
-	/*return s.buf_ptr-s.buf;*/
-	return maxnum;
-}
-#endif
 
 static int decode_int8_two_complement(uint8_t val)
 {
@@ -372,11 +314,6 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 	unsigned char* dst=malloc(len*256); /* the destination buffer */
 	unsigned char* dstr=dst;
 
-#if 0
-	/*int numbigvals;*/ /* number of values greater than number of decompression table max index value */
-	int maxtablevalue; /* try to catch the range of table values needed for decompression table */
-	maxtablevalue=0;
-#endif
 
 	/* if(!color){
 	   printf("no matching color for %c (0x%x, %i) in the database => ignoring %i bytes\n",color_name,color_name,color_name, len);
@@ -389,10 +326,7 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 	while (len-- > 0) {
 		int c = decode_int8_two_complement(*buf++);
 
-		/*printf("DEBUG top of while loop len=%i\n",len);*/
-
 		if(c== -128){/* end of line => decode and copy things here */
-		  /*printf("DEBUG end of line---decode and copy things here\n");*/
 			/* create new list entry */
 			if(color && size){
 				if(!color->tail)
@@ -413,7 +347,6 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 				  if (img->color->bpp==2) {/* handle 5pixel in 8 bits compression --- this is pixel-packing rather than compression, just not wasting space */
 				    color->head->buf=calloc(1,size*2+8);
 				    size=color->head->len=eight2ten(dstr,color->head->buf,size,size*2);
-				    /*printf("DEBUG 3-level color compressed\n");*/
 				  } else if(img->color->bpp==4){ /* handle 4-bit ink compression */
 				    if (img->color->level==5) {/* 5-level compression --- this is pixel-packing rather than compression, just not wasting space */
 				      color->head->buf=calloc(1,size*2+8);
@@ -421,20 +354,12 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 				      if (DEBUG) {
 					printf("DEBUG 5-level color compressed\n");
 				      }
-				      /*maxtablevalue=analysiseight2twelve(dstr,color->head->buf,size,size*2);
-				      if (maxtablevalue!=0) {
-					printf("maxtablevalue: %x",maxtablevalue);
-					}*/
 				    } else if (img->color->level==6) { /* 6-level compression --- this is pixel-packing rather than compression, just not wasting space */
 				      color->head->buf=calloc(1,size*2+8);
 				      size=color->head->len=eight2twelve2(dstr,color->head->buf,size,size*2);
 				      if (DEBUG) {
 					printf("DEBUG 6-level color compressed\n");
 				      }
-				      /*maxtablevalue=analysiseight2twelve2(dstr,color->head->buf,size,size*2);
-				      if (maxtablevalue!=0) {
-					printf("maxtablevalue: %x",maxtablevalue);
-					}*/
 				    }
 				  }
 				}
@@ -457,15 +382,12 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 				c=*buf;
 				++buf;
 				--len;
-				/*printf("DEBUG repeat character %i\n",len);*/
 				memset(dst,c,i);
 				dst +=i;
 				size+=i;
 			}else{ /* normal code */
-			        /*printf("DEBUG normal code\n");*/
 				i=c+1;
 				len-=i;
-				/*printf("DEBUG before memcpy dst,buf,i. %d, %i\n",i,len);*/
 				memcpy( dst, buf, i);
 				buf +=i;
 				dst +=i;
@@ -480,17 +402,6 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 
 /* checks if the buffer contains a pixel definition at the given x and y position */
 static inline int inside_range(color_t* c,int x,int y){
-  /* debug*/
-  /*  if ((c->name=='C' || c->name=='M' || c->name=='Y' || c->name=='c' || c->name=='m') && x==0 && y==0){
-    printf("%c: bpp: %d\n",c->name,c->bpp);
-    printf("%c: y: %d\n",c->name,y);
-    printf("%c: c->pos->line: %d\n",c->name,c->pos->line);
-    printf("%c: c->pos->len: %d\n",c->name,c->pos->len);
-    printf("%c: x: %d\n",c->name,x);
-    printf("%c: c->bpp*x: %d\n",c->name,c->bpp*x);
-    printf("%c: c->pos->len *8: %d\n",c->name,c->pos->len *8);
-    printf("---\n");
-    }*/
 	if(c->bpp && c->pos &&  c->pos->line==y && c->pos->len && (c->pos->len *8 >= c->bpp*x))
 		return 1;
 	return 0;
@@ -523,40 +434,7 @@ static void write_line(image_t*img,FILE* fp,int pos_y){
 	color_t* m=get_color(img,'m');
 	color_t* y=get_color(img,'y');
 	color_t* k=get_color(img,'k');
-	/* color_t* H=get_color(img,'H'); */
-	/*color_t* R=get_color(img,'R');*/
-	/*color_t* G=get_color(img,'G');*/
-	/* experimenting with strange colors */
-	/* color_t* P=get_color2(img,'P');
-	color_t* Q=get_color2(img,'Q');
-	color_t* R=get_color2(img,'R');
-	color_t* S=get_color2(img,'S');
-	color_t* T=get_color2(img,'T'); */
 
-	/* color_t* A=get_color(img,'A'); */
-	/* color_t* B=get_color(img,'B'); */
-	/* color_t* D=get_color(img,'D'); */
-	/* color_t* E=get_color(img,'E'); */
-	/* color_t* F=get_color(img,'F'); */
-	/* color_t* I=get_color(img,'I'); */
-	/* color_t* J=get_color(img,'J'); */
-	/* color_t* L=get_color(img,'L'); */
-	/* color_t* N=get_color(img,'N'); */
-	/* color_t* O=get_color(img,'O'); */
-	/* color_t* P=get_color(img,'P'); */
-	/* color_t* Q=get_color(img,'Q'); */
-	/* color_t* S=get_color(img,'S'); */
-	/* color_t* T=get_color(img,'T'); */
-	/* color_t* U=get_color(img,'U'); */
-	/* color_t* V=get_color(img,'V'); */
-	/* color_t* W=get_color(img,'W'); */
-	/* color_t* X=get_color(img,'X'); */
-	/* color_t* Z=get_color(img,'Z'); */
-	/* color_t* a=get_color(img,'a'); */
-	/* color_t* b=get_color(img,'b'); */
-	/* color_t* d=get_color(img,'d'); */
-	/* color_t* e=get_color(img,'e'); */
-	/* color_t* f=get_color(img,'f'); */
 	GetBitContext gb[MAX_COLORS];
 	/* move iterator */
 	advance(img,pos_y);
@@ -574,25 +452,13 @@ static void write_line(image_t*img,FILE* fp,int pos_y){
 		  }
 		for(i=0;i<MAX_COLORS;i++){
 		  if(inside_range(&img->color[i],x,pos_y)) {
-		    /*img->color[i].value = get_bits(&gb[i],img->color[i].bpp);*/
 		    img->color[i].value += get_bits(&gb[i],img->color[i].bpp);
-		    /*		    printf("getting pixel values for color %d\n",i);*/
-		    /*if (img->color[i].value != 0)
-		      printf("what pixel values for color %d: %x\n",i,img->color[i].value);*/
 		    if (i>7){
 		      printf("getting pixel values for color %d\n",i);/* only going 0 1 2 4 5 --- missing i>7 bugger! */
-		      /*img->color[i].value = 1;*/
 		      printf("color %c has value %d\n",img->color[i].name,img->color[i].value);
 		    }
 		    /* add 0x80 to colors where 0x80 is seen added in inkset */
-		  }
-		  else if(i>7) {
-		    /* can we force some results here? */
-		    /*img->color[i].value = 1;*/
-		    /*get_bits(&gb[i],img->color[i].bpp);*/
-		  }
-		  else {
-		    /*printf(" NOT getting pixel values for color %d\n",i);*/
+		  } else {
 		    img->color[i].value = 0;
 		  }
 		  /* update statistics */
@@ -601,17 +467,10 @@ static void write_line(image_t*img,FILE* fp,int pos_y){
 		  (img->color[i].usedlevels)[img->color[i].value]=1;
 		}
 		/* calculate CMYK values */
-		/*
-		lK=K->density * K->value/(K->level-1) + k->density * k->value/(k->level-1);
-		lM=M->density * M->value/(M->level-1) + m->density * m->value/(m->level-1);
-		lY=Y->density * Y->value/(Y->level-1) + y->density * y->value/(y->level-1);
-		lC=C->density * C->value/(C->level-1) + c->density * c->value/(c->level-1);*/
-
 		lK=K->density * K->value/(K->level-1) + k->density * k->value/(k->level-1);
 		lM=M->density * M->value/(M->level-1) + m->density * m->value/(m->level-1);
 		lY=Y->density * Y->value/(Y->level-1) + y->density * y->value/(y->level-1);
 		lC=C->density * C->value/(C->level-1) + c->density * c->value/(c->level-1);
-
 
 		/* detect image edges */
 		if(lK || lM || lY || lC){
@@ -654,7 +513,6 @@ static void write_ppm(image_t* img,FILE* fp){
 	int i;
 	/* allocate buffers for dot statistics */
         for(i=0;i<MAX_COLORS;i++){
-	  /*img->color[i].dots=calloc(1,sizeof(int)*(img->color[i].level+1));*/
 	  img->color[i].dots=calloc(1,sizeof(int)*(1<<((img->color[i].bpp)+1)));
 	}
 	/* allocate buffers for levels used*/
@@ -679,7 +537,6 @@ static void write_ppm(image_t* img,FILE* fp){
 	for(i=0;i<MAX_COLORS;i++){
 	  int level;
 	  if (img->color[i].bpp > 0) {
-	    /*for(level=0;level < img->color[i].level;level++)*/
 	    for(level=0;level < 1<<(img->color[i].bpp);level++)
 	      printf("color %c level %i dots %i\n",img->color[i].name,level,img->color[i].dots[level]);
 	  }
@@ -784,20 +641,6 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				if(buf[0]>>7){
 				        /* usual order */
 				        char order[]="CMYKcmyk";
-				        /*char order[]="CMYKcmykHRGABDEFIJLMNOPQSTUVWXZabdef";*/
-				        /* iP3500 test */
-				        /*char order[]="CMYKcmykHRGBCMYcmykabd";*/
-				        /*char order[]="CMYKcmykHpnoPQRSTykabd";*/
-				        /*char order[]="KCMYkcmyHpnoPQRSTykabd";*/
-				        /* MP960 photo modes: k instead of K */
-					/* char order[]="CMYkcmyKHRGABDEFIJLMNOPQSTUVWXZabdef";*/
-					/* T-shirt transfer mode: y changed to k --- no y, no K */
-					/*char order[]="CMYKcmkyHRGABDEFIJLMNOPQSTUVWXZabdef";*/
-					/* MP990, MG6100, MG8100 plain modes */
-				        /*char order[]="KCcMmYykRHGABDEFIJLMNOPQSTUVWXZabdef";*/
-					/* MP990 etc. photo modes */
-				        /* char order[]="KCcMmYykRHGABDEFIJLMNOPQSTUVWXZabdef"; */
-					/* int black_found = 0; */
 					num_colors = (cnt - 3)/3;
 					printf(" bit_info: using detailed color settings for max %i colors\n",num_colors);
 					if(buf[1]==0x80)
@@ -826,17 +669,6 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					    img->color[i].bpp=buf[3+i*3] & 31;
 					    img->color[i].level=(buf[3+i*3+1] << 8) + buf[3+i*3+2];/* check this carefully */
 
-					    /* work around for levels not matching (bpp gives more) */
-					    /*if ((img->color[i].level == 3) && (img->color[i].bpp == 2)) {
-					      printf("WARNING: color %c bpp %i declared levels %i, setting to 4 for testing \n",img->color[i].name,img->color[i].bpp,img->color[i].level);
-					      img->color[i].level = 4;
-					      } */
-					    /*else if ((img->color[i].level == 4) && (img->color[i].bpp == 4)) {*/
-					    /* levels is 16 but only each 2nd level is used */
-					    /*  printf("WARNING: color %c bpp %i declared levels %i, setting to 16 for testing \n",img->color[i].name,img->color[i].bpp,img->color[i].level);
-						img->color[i].level = 16;
-						} */
-
 					    /* this is not supposed to give accurate images */
 					    /* if(i<4) */ /* set to actual colors CMYK */
 					    if((img->color[i].name =='K')||(img->color[i].name =='C')||(img->color[i].name =='M')||(img->color[i].name =='Y') ) {
@@ -847,21 +679,8 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					    }
 					    else
 					      img->color[i].density = 128; /*128+96;*/ /* try to add 0x80 to sub-channels for MP450 hi-quality mode */
-                                            /*
-					    if((order[i] == 'K' || order[i] == 'k') && img->color[i].bpp)
-					      black_found = 1;
-					    */
-					    /*
-					    if(order[i] == 'y' && !black_found && img->color[i].level){
-					      printf("iP6700 hack: treating color definition at the y position as k\n");
-					      img->color[i].name = 'k';
-					      order[i] = 'k';
-					      order[i+1] = 'y';
-					      black_found = 1;
-					      img->color[i].density = 255;
-					    }
-					    */
-					    /* %c*/
+
+					      /* %c*/
 					    printf(" Color %c Compression: %i bpp %i level %i\n",img->color[i].name,
 						   img->color[i].compression,img->color[i].bpp,img->color[i].level);
 					  }else{
@@ -881,11 +700,6 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					  if(i<MAX_COLORS){
 					        /* usual */
   					        char order[]="CMYKcmyk";
-					        /* const char order[]="CMYKcmykHRGABDEFIJLMNOPQSTUVWXZabdef";*/
-				                /* iP3500 test */
-				                /* char order[]="CMYKcmykHRGBCMYcmykabd"; */
-						/* MP990, MG6100, MG8100 plain modes */
-						/*const char order[]="KCcMmYykRHGABDEFIJLMNOPQSTUVWXZabdef";*/
 						img->color[i].name=order[i];
 						img->color[i].compression=0;
 						img->color[i].bpp=1;
@@ -896,7 +710,6 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 						       img->color[i].compression,img->color[i].bpp,img->color[i].level);
 					  }else{
 					    printf(" Color %i out of bounds!", i);
-						/*printf(" Color ignoring setting %x %x %x\n",buf[3+i*3],buf[3+i*3+1],buf[3+i*3+2]);*/
 					  }
 					}
 				}else{
@@ -911,11 +724,6 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				for(i=0;i<cnt;i++){
 				  if (!valid_color(buf[i]))
                                     {
-				    /*if (!(valid_color(buf[i]-0x60))) {*/
-				    /*  printf("invalid color char %c [failed on initial]\n", buf[i]);*/
-				    /*  break; */
-				    /*}*/
-				    /*else {*/
 				      buf[i]=buf[i]-0x60;
 				      printf("subtracting 0x60 to give [corrected]: %c\n", buf[i]);
 				    }
