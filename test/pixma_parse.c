@@ -305,7 +305,7 @@ static int decode_int8_two_complement(uint8_t val)
 
 /* reads a run length encoded block of raster data, decodes and uncompresses it */
 static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
-		  unsigned char color_name,unsigned int maxw)
+		  unsigned char color_name)
 {
 	color_t* color=get_color(img,color_name);
 	uint8_t *buf = buffer;
@@ -367,8 +367,8 @@ static int Raster(image_t* img, uint8_t *buffer, ssize_t len,
 			/* adjust the maximum image width */
 			if(color && color->bpp && img->width < size*8/color->bpp){
 				unsigned int newwidth = size * 8 / color->bpp;
-				if(maxw && newwidth > maxw)
-					newwidth = maxw;
+				if (img->max_width && newwidth > img->max_width)
+					newwidth = img->max_width;
 				img->width = newwidth;
 			}
 			/* reset output buffer */
@@ -582,6 +582,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 	int num_colors;
 	unsigned int xml_read;
 	xml_read=0;
+	img->max_width = maxw;
 
 	printf("------- parsing the printjob -------\n");
 	while(!returnv && !feof(in)){
@@ -775,7 +776,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 			case 'F':
 				if(verbose)
 					printf("ESC (F raster block (len=%i):\n",cnt);
-				if((returnv = Raster(img,buf,cnt,img->color_order[img->cur_color],maxw)))
+				if((returnv = Raster(img,buf,cnt,img->color_order[img->cur_color])))
 					break;
 				++img->cur_color;
 				if(img->cur_color >= img->num_colors){
@@ -800,7 +801,7 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 				 * the selected color is stored in the first byte
 				 */
 				buf[cnt]=0x80;
-				returnv = Raster(img,buf+1,cnt,buf[0],maxw);
+				returnv = Raster(img,buf+1,cnt,buf[0]);
 				if (fgetc(in)!=0x0d){
 					printf("Raster A not terminated by 0x0d\n");
 					returnv=-4;

@@ -287,6 +287,7 @@ typedef struct image_s {
 	unsigned int image_bottom;
 	unsigned int image_left;
 	unsigned int image_right;
+	unsigned int max_width;
 	float top;
 	float left;
 	int xres,yres;
