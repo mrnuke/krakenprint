@@ -828,8 +828,11 @@ static int process(FILE* in, FILE* out,int verbose,unsigned int maxw,unsigned in
 					img->height += (buf[0]*256+buf[1]);
 				break;
 			case 'N':
-				if(verbose)
+				if(verbose) {
 					printf("ESC (N raster block (len=%i):\n", cnt);
+					if (cnt > 1)
+						hexdump(buf, cnt);
+				}
 				/* On ESC (N, the first byte is 'F'. Skip it. */
 				raster_add_lines(img, buf + 1, cnt - 1);
 				break;
