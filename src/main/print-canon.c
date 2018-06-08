@@ -3447,13 +3447,14 @@ canon_limit(const stp_vars_t *v,  		/* I */
   *min_height = 1;
 }
 
+#define ESC (0x1b)
+
 /*
  * 'canon_cmd()' - Sends a command with variable args
  */
 static void
 canon_cmd(const stp_vars_t *v, /* I - the printer         */
-	  const char *ini, /* I - 2 bytes start code  */
-	  const char cmd,  /* I - command code        */
+	  const char *ini, /* I - 2 command code after ESC(0x1b)  */
 	  int  num,  /* I - number of arguments */
 	  ...        /* I - the args themselves */
 	  )
@@ -3470,26 +3471,19 @@ canon_cmd(const stp_vars_t *v, /* I - the printer         */
       va_end(ap);
     }
 
-  stp_zfwrite(ini,2,1,v);
-  if (cmd)
-    {
-      stp_putc(cmd,v);
-      stp_put16_le(num, v);
-      if (num)
-	stp_zfwrite((const char *)buffer,num,1,v);
-    }
+  stp_putc(ESC, v);
+  stp_zfwrite(ini, 2, 1, v);
+  stp_put16_le(num, v);
+  if (num)
+    stp_zfwrite((const char *)buffer,num,1,v);
   stp_free(buffer);
 }
 
 #define PUT(V,WHAT,VAL,RES) stp_dprintf(STP_DBG_CANON,V,"canon: "WHAT	\
 " is %04x =% 5d = %f\" = %f mm\n",(VAL),(VAL),(VAL)/(1.*RES),(VAL)/(RES/25.4))
 
-#define ESC28 "\033\050"
-#define ESC5b "\033\133"
-#define ESC40 "\033\100"
-
 static void canon_control_cmd(const stp_vars_t*v,const char* cmd){
-      canon_cmd(v,ESC5b,0x4b, 2, 0x00,0x1f);
+      canon_cmd(v, "[K", 2, 0x00,0x1f);
       stp_puts("BJLSTART\nControlMode=Common\n",v);
       stp_puts(cmd,v);
       stp_putc('\n',v);
@@ -3511,7 +3505,7 @@ canon_init_resetPrinter(const stp_vars_t *v, const canon_privdata_t *init)
   }
   if(!strcmp(init->slot->name,"CD"))
     canon_control_cmd(v,"MediaDetection=ON");
-  canon_cmd(v,ESC5b,0x4b, 2, 0x00,0x0f);
+  canon_cmd(v, "[K", 2, 0x00, 0x0f);
 }
 
 /* ESC ($ -- 0x24 -- cmdSetDuplex --:
@@ -3524,7 +3518,7 @@ canon_init_setDuplex(const stp_vars_t *v, const canon_privdata_t *init)
   if (strncmp(init->duplex_str, "Duplex", 6)) {
     if ( !(strcmp(init->caps->name,"i860")) || !(strcmp(init->caps->name,"i865")) || !(strcmp(init->caps->name,"i950")) || !(strcmp(init->caps->name,"i960")) || !(strcmp(init->caps->name,"i990")) ) {
       /* i860, i865, i950, i960, i990 use ESC ($ command even for simplex mode */
-      canon_cmd(v,ESC28,0x24,9,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
+      canon_cmd(v, "($", 9,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
       return;
     }
     else
@@ -3532,7 +3526,7 @@ canon_init_setDuplex(const stp_vars_t *v, const canon_privdata_t *init)
   }
   /* The same command seems to be needed for both Duplex and DuplexTumble
      no idea about the meanings of the single bytes */
-  canon_cmd(v,ESC28,0x24,9,0x01,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x02);
+  canon_cmd(v, "($",9,0x01,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x02);
 }
 
 /* ESC (a -- 0x61 -- cmdSetPageMode --:
@@ -3544,7 +3538,7 @@ canon_init_setPageMode(const stp_vars_t *v, const canon_privdata_t *init)
     return;
 
   if (init->caps->features & CANON_CAP_a)
-    canon_cmd(v,ESC28,0x61, 1, 0x01);
+    canon_cmd(v, "(a", 1, 0x01);
 }
 
 /* ESC (b -- 0x62 -- -- set data compression:
@@ -3555,7 +3549,7 @@ canon_init_setDataCompression(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_b))
     return;
 
-  canon_cmd(v,ESC28,0x62, 1, 0x01);
+  canon_cmd(v, "(b", 1, 0x01);
 }
 
 /* ESC (c -- 0x63 -- cmdSetColor --:
@@ -3596,9 +3590,9 @@ canon_init_setColor(const stp_vars_t *v, const canon_privdata_t *init)
 		      else if (!strcmp(init->mode->name,"180x180dpi"))
 			arg_63[1] = 0x02;
 		      /* else keep at 01 hard-coded as above - logic unknown */
-		      canon_cmd(v,ESC28,0x63, 3, arg_63[0], arg_63[1], 0x00);
+		      canon_cmd(v, "(c", 3, arg_63[0], arg_63[1], 0x00);
 		    } else /* length 2 in legacy code */
-		      canon_cmd(v,ESC28,0x63, 2, arg_63[0], arg_63[1]);
+		      canon_cmd(v, "(c", 2, arg_63[0], arg_63[1]);
 		break;
 
 	case 2:			/* are any models using this? */
@@ -3653,16 +3647,16 @@ canon_init_setResolution(const stp_vars_t *v, const canon_privdata_t *init)
     return;
 
    if (strcmp(init->caps->name,"S200") || (init->mode->xdpi <= 360))
-  canon_cmd(v,ESC28,0x64, 4,
+  canon_cmd(v, "(d", 4,
 	    (init->mode->ydpi >> 8 ), (init->mode->ydpi & 255),
 	    (init->mode->xdpi >> 8 ), (init->mode->xdpi & 255));
    else
      if (init->mode->xdpi < 2880)
-       canon_cmd(v,ESC28,0x64, 4,
+       canon_cmd(v, "(d", 4,
          (720 >> 8), (720 & 255),
          (720 >> 8), (720 & 255));
      else
-       canon_cmd(v,ESC28,0x64, 4,
+       canon_cmd(v, "(d", 4,
          (720 >> 8), (720 & 255),
          (2880 >> 8), (2880 & 255));
   }
@@ -3688,7 +3682,7 @@ canon_init_setPageMargins(const stp_vars_t *v, const canon_privdata_t *init)
   if (minlength>length) length= minlength;
   if (minwidth>width) width= minwidth;
 
-  canon_cmd(v,ESC28,0x67, 4, 0,
+  canon_cmd(v, "(g", 4, 0,
 	    (unsigned char)(length),1,
 	    (unsigned char)(width));
 
@@ -3732,9 +3726,9 @@ canon_init_setTray(const stp_vars_t *v, const canon_privdata_t *init)
   /* select between length 2 and 3 byte variations of command */
   /*if(init->caps->model_id >= 3)*/
   if(init->caps->ESC_l_len == 3)
-    canon_cmd(v,ESC28,0x6c, 3, arg_6c_1, arg_6c_2, arg_6c_3); /* 3rd arg is "gap" */
+    canon_cmd(v, "(l", 3, arg_6c_1, arg_6c_2, arg_6c_3); /* 3rd arg is "gap" */
   else /* else 2 bytes---no other option for now */
-    canon_cmd(v,ESC28,0x6c, 2, arg_6c_1, arg_6c_2);
+    canon_cmd(v, "(l", 2, arg_6c_1, arg_6c_2);
 }
 
 /* ESC (m -- 0x6d --  -- :
@@ -3774,7 +3768,7 @@ canon_init_setPrintMode(const stp_vars_t *v, const canon_privdata_t *init)
   if (!strcmp(init->caps->name,"8200") || !strcmp(init->caps->name,"S200"))
     arg_6d_3= 0x01;
 
-  canon_cmd(v,ESC28,0x6d,12, arg_6d_1,
+  canon_cmd(v, "(m", 12, arg_6d_1,
 	    0xff,0xff,0x00,0x00,0x07,0x00,
 	    arg_6d_a,arg_6d_b,arg_6d_2,0x00,arg_6d_3);
 }
@@ -3787,7 +3781,7 @@ canon_init_setESC_M(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_M))
     return;
 
-  canon_cmd(v,ESC28,0x4d, 3, 0x00, 0x00, 0x00);
+  canon_cmd(v, "(M", 3, 0x00, 0x00, 0x00);
 }
 
 /* ESC (p -- 0x70 -- cmdSetPageMargins2 --:
@@ -4350,8 +4344,8 @@ canon_init_setPageMargins2(const stp_vars_t *v, canon_privdata_t *init)
 	stp_dprintf(STP_DBG_CANON, v, "final printable_width: '%d'\n",printable_width);
 	stp_dprintf(STP_DBG_CANON, v, "final printable_length: '%d'\n",printable_length);
 
-	stp_zfwrite(ESC28,2,1,v); /* ESC( */
-	stp_putc(0x70,v);         /* p    */
+	stp_putc(ESC, v);
+	stp_zfwrite("(p", 2, 1, v);
 	stp_put16_le(46, v);      /* len  */
 	/* 0 for borderless, calculated otherwise */
 	stp_put16_be(printable_length,v); /* printable_length */
@@ -4423,7 +4417,7 @@ canon_init_setPageMargins2(const stp_vars_t *v, canon_privdata_t *init)
 	return;
       }
   }
-  canon_cmd(v,ESC28,0x70, 8,
+  canon_cmd(v, "(p", 8,
    	      arg_70_1, arg_70_2, 0x00, 0x00,
 	      arg_70_3, arg_70_4, 0x00, 0x00);
 }
@@ -4874,14 +4868,14 @@ canon_init_setESC_P(const stp_vars_t *v, const canon_privdata_t *init)
 
       if ( !(strcmp(init->caps->name,"PIXMA MG7700")) ) {
 	/* output with 3 extra 0s at the end */
-	canon_cmd( v,ESC28,0x50,12,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00,arg_ESCP_9,0x00,0x00,0x00 );
+	canon_cmd(v, "(P", 12,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00,arg_ESCP_9,0x00,0x00,0x00 );
       }
       else {
 
       /* arg_ESCP_1 = 0x03; */ /* A4 size */
       /* arg_ESCP_2 = 0x00; */ /* plain media */
       /*                             size                media                                  tray */
-      canon_cmd( v,ESC28,0x50,9,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00,arg_ESCP_9 );
+      canon_cmd(v, "(P", 9,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00,arg_ESCP_9 );
 
       }
     }
@@ -4891,7 +4885,7 @@ canon_init_setESC_P(const stp_vars_t *v, const canon_privdata_t *init)
       /* arg_ESCP_1 = 0x03; */ /* A4 size */
       /* arg_ESCP_2 = 0x00; */ /* plain media */
       /*                             size                media             */
-      canon_cmd( v,ESC28,0x50,8,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00 );
+      canon_cmd(v, "(P", 8,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6,arg_ESCP_7,0x00 );
     }
   else if ( init->caps->ESC_P_len == 6 ) /* first devices with XML header and ender */
     {/* the 4th of the 6 bytes is the media type. 2nd byte is media size. Both read from canon-media array. */
@@ -4899,15 +4893,15 @@ canon_init_setESC_P(const stp_vars_t *v, const canon_privdata_t *init)
       /* arg_ESCP_1 = 0x03; */ /* A4 size */
       /* arg_ESCP_2 = 0x00; */ /* plain media */
       /*                             size                media             */
-      canon_cmd( v,ESC28,0x50,6,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6 );
+      canon_cmd(v, "(P", 6,0x00,arg_ESCP_1,0x00,arg_ESCP_2,arg_ESCP_5,arg_ESCP_6 );
     }
   else if ( init->caps->ESC_P_len == 4 )  {/* 4 bytes */
     /*                             size            media       */
-    canon_cmd( v,ESC28,0x50,4,0x00,arg_ESCP_1,0x00,arg_ESCP_2 );
+    canon_cmd(v, "(P", 4,0x00,arg_ESCP_1,0x00,arg_ESCP_2 );
   }
   else if ( init->caps->ESC_P_len == 2 )  {
     /* 2 bytes only */
-      canon_cmd( v,ESC28,0x50,2,0x00,arg_ESCP_1 );
+      canon_cmd(v, "(P", 2,0x00,arg_ESCP_1 );
     }
   else /* error in definition */
     stp_dprintf(STP_DBG_CANON, v,"SEVERE BUG IN print-canon.c::canon_init_setESC_P() "
@@ -4926,7 +4920,7 @@ canon_init_setESC_s(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_s))
     return;
 
-  canon_cmd(v,ESC28,0x73, 1, 0x00);
+  canon_cmd(v, "(s", 1, 0x00);
 }
 
 /* ESC (S -- 0x53 -- unknown -- :
@@ -4995,7 +4989,7 @@ canon_init_setESC_S(const stp_vars_t *v, const canon_privdata_t *init)
     }
   }
 
-      canon_cmd(v,ESC28,0x53,54,arg_ESCS_01,0x02,0xff,arg_ESCS_04,0x41,0x02,0x00,0x01,arg_ESCS_09,0x00,arg_ESCS_11,0x00,0x01,0x01,0x03,0x02,0x01,0x01,0x01,0x03,0x02,0x00,0x07,0x06,0x02,0x01,0x02,0x04,0x04,0x04,0x05,0x06,0x08,0x08,0x08,0x0a,0x0a,0x09,0x00,0x03,0x02,0x01,0x01,0x01,0x01,0x01,0x06,0x02,0x02,0x02,0x03,0x04,0x05,0x06);
+      canon_cmd(v, "(S", 54,arg_ESCS_01,0x02,0xff,arg_ESCS_04,0x41,0x02,0x00,0x01,arg_ESCS_09,0x00,arg_ESCS_11,0x00,0x01,0x01,0x03,0x02,0x01,0x01,0x01,0x03,0x02,0x00,0x07,0x06,0x02,0x01,0x02,0x04,0x04,0x04,0x05,0x06,0x08,0x08,0x08,0x0a,0x0a,0x09,0x00,0x03,0x02,0x01,0x01,0x01,0x01,0x01,0x06,0x02,0x02,0x02,0x03,0x04,0x05,0x06);
 
 }
 
@@ -5013,49 +5007,49 @@ canon_init_setCartridge(const stp_vars_t *v, const canon_privdata_t *init)
 
   if (ink_set && !(strcmp(ink_set,"Both"))) {
     if ( !(strcmp(init->caps->name,"PIXMA iP90")) || !(strcmp(init->caps->name,"PIXMA iP100")) || !(strcmp(init->caps->name,"PIXMA iP110")) ) {
-      canon_cmd(v,ESC28,0x54,3,0x02,0x00,0x00); /* default for iP90, iP100, iP110 */
+      canon_cmd(v, "(T", 3,0x02,0x00,0x00); /* default for iP90, iP100, iP110 */
     }
     else if ( !(strcmp(init->caps->name,"PIXMA iP6210")) ) {
-      canon_cmd(v,ESC28,0x54,3,0x03,0x06,0x06); /* default for iP6210D, iP6220D, iP6310D */
+      canon_cmd(v, "(T", 3,0x03,0x06,0x06); /* default for iP6210D, iP6220D, iP6310D */
       /* both:  0x3 0x6 0x6 */
       /* color: 0x3 0x1 0x1 */
     }
     else {
-      canon_cmd(v,ESC28,0x54,3,0x03,0x04,0x04); /* default: both cartridges */
+      canon_cmd(v, "(T", 3,0x03,0x04,0x04); /* default: both cartridges */
     }
   }
   else if (ink_set && !(strcmp(ink_set,"Black"))) {
     if ( !(strcmp(init->caps->name,"PIXMA iP90")) || !(strcmp(init->caps->name,"PIXMA iP100")) || !(strcmp(init->caps->name,"PIXMA iP110")) ) {
-      canon_cmd(v,ESC28,0x54,3,0x02,0x00,0x00); /* default for iP90, iP100, iP110 */
+      canon_cmd(v, "(T", 3,0x02,0x00,0x00); /* default for iP90, iP100, iP110 */
     }
     else if ( !(strcmp(init->caps->name,"PIXMA iP6210")) ) {
-	canon_cmd(v,ESC28,0x54,3,0x03,0x06,0x06); /* default for iP6210D, iP6220D, iP6310D */
+	canon_cmd(v, "(T", 3,0x03,0x06,0x06); /* default for iP6210D, iP6220D, iP6310D */
 	/* both:  0x3 0x6 0x6 */
 	/* color: 0x3 0x1 0x1 */
 	/* workaround since does not have black option */
     }
     else {
-      canon_cmd(v,ESC28,0x54,3,0x03,0x02,0x02); /* default: black cartridge */
+      canon_cmd(v, "(T", 3,0x03,0x02,0x02); /* default: black cartridge */
     }
   }
   else if (ink_set && !(strcmp(ink_set,"Color"))) {
     if ( !(strcmp(init->caps->name,"PIXMA iP90")) || !(strcmp(init->caps->name,"PIXMA iP100")) || !(strcmp(init->caps->name,"PIXMA iP110")) ) {
-      canon_cmd(v,ESC28,0x54,3,0x02,0x00,0x01); /* composite for iP90, iP100, iP110 */
+      canon_cmd(v, "(T", 3,0x02,0x00,0x01); /* composite for iP90, iP100, iP110 */
       /* black save     : 2 1 0 for selected plain (600dpi std) modes, rest remain 2 0 0 */
       /* composite black: 2 0 1 for selected plain (600dpi std & draft) modes, rest remain 2 0 0 */
       /* both above set : AND of bytes above */
     }
     else if ( !(strcmp(init->caps->name,"PIXMA iP6210")) ) {
-      canon_cmd(v,ESC28,0x54,3,0x03,0x01,0x01); /* default for iP6210D, iP6220D, iP6310D */
+      canon_cmd(v, "(T", 3,0x03,0x01,0x01); /* default for iP6210D, iP6220D, iP6310D */
       /* both:  0x3 0x6 0x6 */
       /* color: 0x3 0x1 0x1 */
     }
     else {
-      canon_cmd(v,ESC28,0x54,3,0x03,0x01,0x01); /* default: color cartridges */
+      canon_cmd(v, "(T", 3,0x03,0x01,0x01); /* default: color cartridges */
     }
   }
   else {
-    canon_cmd(v,ESC28,0x54,3,0x03,0x04,0x04); /* default: both cartridges */
+    canon_cmd(v, "(T", 3,0x03,0x04,0x04); /* default: both cartridges */
   }
 }
 
@@ -5067,7 +5061,7 @@ canon_init_setPageID(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_q))
     return;
 
-  canon_cmd(v,ESC28,0x71, 1, 0x01);
+  canon_cmd(v, "(q", 1, 0x01);
 }
 
 /* ESC (r -- 0x72 --  -- :
@@ -5082,26 +5076,26 @@ canon_init_setX72(const stp_vars_t *v, const canon_privdata_t *init)
   if ( (init->caps->features & CANON_CAP_r)
        || (init->caps->features & CANON_CAP_rr) )
     if  (init->caps->ESC_r_arg != 0) /* only output arg if non-zero */
-      canon_cmd(v,ESC28,0x72, 1, init->caps->ESC_r_arg); /* whatever for - 8200/S200 need it */
+      canon_cmd(v, "(r",  1, init->caps->ESC_r_arg); /* whatever for - 8200/S200 need it */
   if (init->caps->features & CANON_CAP_rr) {
     if ( !(strcmp(init->caps->name,"S200")) ) {
-      canon_cmd(v,ESC28,0x72, 3, 0x63, 1, 0); /* whatever for - S200 needs it */
+      canon_cmd(v, "(r",  3, 0x63, 1, 0); /* whatever for - S200 needs it */
       /* probably to set the print direction of the head */
     }
-    else if ( !(strcmp(init->caps->name,"S820")) || !(strcmp(init->caps->name,"S900")) || !(strcmp(init->caps->name,"i950")) || !(strcmp(init->caps->name,"i960")) || !(strcmp(init->caps->name,"i9100")) || !(strcmp(init->caps->name,"i9900")) || !(strcmp(init->caps->name,"PIXMA iP7100")) || !(strcmp(init->caps->name,"PIXMA iP8100")) || !(strcmp(init->caps->name,"PIXMA iP8500")) || !(strcmp(init->caps->name,"PIXMA iP8600")) || !(strcmp(init->caps->name,"PIXMA iP9910")) || !(strcmp(init->caps->name,"PIXMA MP900")) || !(strcmp(init->caps->name,"PIXMA Pro9000")) || !(strcmp(init->caps->name,"PIXMA Pro9002")) || !(strcmp(init->caps->name,"PIXMA Pro9500")) || !(strcmp(init->caps->name,"PIXMA Pro9502")) ) {
-      canon_cmd(v,ESC28,0x72, 2, 0x62, 0); /* 2 bytes */
+    else if ( !(strcmp(init->caps->name,"S820")) || !(strcmp(init->caps->name,"S900")) || !(strcmp(init->caps->name,"i950")) || !(strcmp(init->caps->name,"i960")) || !(strcmp(init->caps->name,"i9100")) || !(strcmp(init->caps->name,"i9900")) || !(strcmp(init->caps->name,"PIXMA iP7100")) || !(strcmp(init->caps->name,"PIXMA iP8100")) || !(strcmp(init->caps->name,"PIXMA iP8500")) || !(strcmp(init->caps->name,"PIXMA iP8600")) || !(strcmp(init->caps->name,"PIXMA iP9910")) || !(strcmp(init->caps->name,"PIXMA MP900")) || !(strcmp(init->caps->name,"PIXMA Pro9000")) || !(strcmp(init->caps->name,"PIXMA Pro9002")) || !(strcmp(init->caps->name,"PIXMA Pro9500")) || !(strcmp(init->caps->name,"PIXMA Pro9502")) || !(strcmp(init->caps->name,"PIXMA Pro100"))) {
+      canon_cmd(v, "(r",  2, 0x62, 0); /* 2 bytes */
     }
     /* CD mode only */
     else if ( (init->mode->flags & MODE_FLAG_CD) && (!(strcmp(init->caps->name,"PIXMA iP4600")) || !(strcmp(init->caps->name,"PIXMA iP4700")) || !(strcmp(init->caps->name,"PIXMA MP980")) || !(strcmp(init->caps->name,"PIXMA MP990")) ) ) {
-      canon_cmd(v,ESC28,0x72, 1, 0x65);
+      canon_cmd(v, "(r",  1, 0x65);
     }
     /* CD mode only */
     else if ( (init->mode->flags & MODE_FLAG_CD) && ( !(strcmp(init->caps->name,"PIXMA iP4800")) || !(strcmp(init->caps->name,"PIXMA MG6100")) || !(strcmp(init->caps->name,"PIXMA MG8100")) ) ) {
-      canon_cmd(v,ESC28,0x72, 1, 0x68);
+      canon_cmd(v, "(r",  1, 0x68);
     }
     /* CD mode only -- no ESC (r at all otherwise */
     else if ( (init->mode->flags & MODE_FLAG_CD) && ( !(strcmp(init->caps->name,"PIXMA iP4900")) || !(strcmp(init->caps->name,"PIXMA MG5200")) || !(strcmp(init->caps->name,"PIXMA MG5300")) || !(strcmp(init->caps->name,"PIXMA MG6200")) || !(strcmp(init->caps->name,"PIXMA MG8200")) || !(strcmp(init->caps->name,"PIXMA TS8000")) ) ) {
-      canon_cmd(v,ESC28,0x72, 1, 0x68); /* same as above case? */
+      canon_cmd(v, "(r",  1, 0x68); /* same as above case? */
     }
     /* other cases here */
   }
@@ -5112,7 +5106,7 @@ canon_init_setX72(const stp_vars_t *v, const canon_privdata_t *init)
 static void
 canon_set_X72(const stp_vars_t *v, int x72arg)
 {
-  canon_cmd(v,ESC28,0x72, 3, 0x63, x72arg, 0);
+  canon_cmd(v, "(r",  3, 0x63, x72arg, 0);
 }
 
 /* ESC (t -- 0x74 -- cmdSetImage --:
@@ -5180,8 +5174,8 @@ canon_init_setImage(const stp_vars_t *v, const canon_privdata_t *init)
           /* this should show that there is an error */
        }
     }
-    stp_zfwrite(ESC28,2,1,v);
-    stp_putc(0x74,v);
+    stp_putc(ESC, v);
+    stp_zfwrite("(t", 2, 1, v);
     stp_put16_le(length,v);
     stp_zfwrite((char*)buf,length,1,v);
     stp_free(buf);
@@ -5194,7 +5188,7 @@ canon_init_setImage(const stp_vars_t *v, const canon_privdata_t *init)
                                /* though we print only 1bit/pixel - but this is how */
                                /* the windows driver works */
   {
-    canon_cmd(v,ESC28,0x74, 30, 0x80, 4, 1, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2,\
+    canon_cmd(v, "(t", 30, 0x80, 4, 1, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2,\
               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     return;
   }
@@ -5250,7 +5244,7 @@ canon_init_setImage(const stp_vars_t *v, const canon_privdata_t *init)
     }
   }
 
-  canon_cmd(v,ESC28,0x74, 3, arg_74_1, arg_74_2, arg_74_3);
+  canon_cmd(v, "(t", 3, arg_74_1, arg_74_2, arg_74_3);
 }
 
 /* ESC (I (J (L
@@ -5264,9 +5258,9 @@ canon_init_setMultiRaster(const stp_vars_t *v, const canon_privdata_t *init){
   if(!(init->caps->features & CANON_CAP_I))
 	return;
 
-  canon_cmd(v,ESC28,0x49, 1, 0x1);  /* enable MultiLine Raster? */
-  /* canon_cmd(v,ESC28,0x4a, 1, init->caps->raster_lines_per_block); */
-  canon_cmd(v,ESC28,0x4a, 1, init->mode->raster_lines_per_block);    /* set number of lines per raster block */
+  canon_cmd(v, "(I", 1, 0x1);  /* enable MultiLine Raster? */
+  /* canon_cmd(v, ESC28, 0x4a, 1, init->caps->raster_lines_per_block); */
+  canon_cmd(v, "(J", 1, init->mode->raster_lines_per_block);    /* set number of lines per raster block */
 
   /* set the color sequence */
   stp_zfwrite("\033(L", 3, 1, v);
@@ -5346,7 +5340,7 @@ canon_init_setESC_u(const stp_vars_t *v, const canon_privdata_t *init)
   if (!(init->caps->features & CANON_CAP_DUPLEX))
     return;
 
-  canon_cmd( v,ESC28,0x75, 1, 0x01 );
+  canon_cmd(v, "(u", 1, 0x01 );
 }
 
 /* ESC (v -- 0x76 -- */
@@ -5378,7 +5372,7 @@ canon_init_setESC_v(const stp_vars_t *v, const canon_privdata_t *init)
   else if( orientation_type && !strcmp(orientation_type,"Seascape")) /* 270 deg */
     arg_ESCv_1 = 0x03;
 
-  canon_cmd( v,ESC28,0x76, 1, arg_ESCv_1 );
+  canon_cmd(v, "(v", 1, arg_ESCv_1 );
 }
 
 /* ESC (w -- 0x77 -- :
@@ -5393,7 +5387,7 @@ canon_init_setESC_w(const stp_vars_t *v, const canon_privdata_t *init)
     return;
 
   arg_ESCw_1 = (init->pt) ? init->pt->media_code_w: 0x00;
-  canon_cmd( v,ESC28,0x77, 1, arg_ESCw_1 );
+  canon_cmd(v, "(w", 1, arg_ESCw_1 );
 }
 
 static void
@@ -5440,7 +5434,7 @@ canon_init_printer(const stp_vars_t *v, canon_privdata_t *init)
     mytop /= init->mode->raster_lines_per_block;
 
   if(mytop)
-    canon_cmd(v,ESC28,0x65, 2, (mytop >> 8 ),(mytop & 255));
+    canon_cmd(v, "(e", 2, (mytop >> 8 ),(mytop & 255));
 }
 
 static void
@@ -5450,9 +5444,9 @@ canon_deinit_printer(const stp_vars_t *v, const canon_privdata_t *init)
   stp_putc(0x0c,v);
 
   /* say goodbye */
-  canon_cmd(v,ESC28,0x62,1,0);
+  canon_cmd(v, "(b", 1, 0);
   if (init->caps->features & CANON_CAP_a)
-    canon_cmd(v,ESC28,0x61, 1, 0);
+    canon_cmd(v, "(a", 1, 0);
 }
 
 static int
@@ -5471,7 +5465,8 @@ static int
 canon_end_job(const stp_vars_t *v, stp_image_t *image)
 {
   const canon_cap_t * caps = canon_get_model_capabilities(v);
-  canon_cmd(v,ESC40,0,0);
+  stp_putc(ESC, v);
+  stp_putc('@', v);
   /* output XML for iP2700 and other devices */
   if (caps->features & CANON_CAP_XML) {
     int length=strlen(postxml_iP2700); /* 263 */
@@ -6733,7 +6728,7 @@ canon_flush_pass(stp_vars_t *v, int passno, int vertical_subpass)
       stp_dprintf(STP_DBG_CANON, v,"                      --line=%d\n", line);
 
       if ( written > 0 )
-        canon_cmd(v,ESC28,0x65, 2, 0, 1); /* go to next nozzle*/
+        canon_cmd(v, "(e", 2, 0, 1); /* go to next nozzle*/
                                            /* if there was printed some data */
 
       written = 0;
