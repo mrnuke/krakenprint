@@ -201,7 +201,7 @@ static const char* const control_cmd_ackshort[] = {
 };
 
 static const char* const control_cmd_none[] = {
-  NULL
+  NULL,
 };
 
 static const char* const control_cmd_PIXMA_iP4000[] = {

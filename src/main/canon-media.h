@@ -1244,8 +1244,8 @@ static const canon_paper_t canon_pixma_pro_100_papers[] = {
   {
     .name = "Plain",
     .text = N_ ("Plain Paper"),
-    .media_code_c = 0x00,
-    .media_code_l = 0x00,
+    .media_code_c = 0x1e,
+    .media_code_l = 0x24,
     .media_code_P = 0x00,
     .media_code_w = 0x00,
     .base_density = 0.00,
