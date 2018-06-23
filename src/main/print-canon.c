@@ -55,6 +55,7 @@
 #include <limits.h>
 #endif
 #include <math.h>
+#include <time.h>
 
 #include "print-canon.h"
 
@@ -191,6 +192,7 @@ pack_pixels3_6(unsigned char* buf,int len)
 #define CANON_CAP_w          0x8000000ul /* related to media type selection */
 #define CANON_CAP_s          0x10000000ul /* not sure of this yet: duplex-related? */
 #define CANON_CAP_u          0x20000000ul /* not sure of this yet: duplex-related? */
+#define CANON_CAP_K_SET_TIME 0x80000000ul /* ESC [K needs SetTime command */
 
 #define CANON_CAP_STD0 (CANON_CAP_b|CANON_CAP_c|CANON_CAP_d|\
                         CANON_CAP_l|CANON_CAP_q|CANON_CAP_t)
@@ -3490,12 +3492,29 @@ static void canon_control_cmd(const stp_vars_t*v,const char* cmd){
       stp_puts("BJLEND\n",v);
 }
 
+static void canon_control_set_time(const stp_vars_t *v)
+{
+	time_t time_raw;
+	struct tm *tm;
+	char set_time[100];
+
+	time(&time_raw);
+	tm = localtime(&time_raw);
+
+	sprintf(set_time, "SetTime=%04d%02d%02d%02d%02d%02d",
+		tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+		tm->tm_hour, tm->tm_min, tm->tm_sec);
+
+	canon_control_cmd(v, set_time);
+}
 
 /* ESC [K --  -- reset printer:
  */
 static void
 canon_init_resetPrinter(const stp_vars_t *v, const canon_privdata_t *init)
 {
+  if (init->caps->features & CANON_CAP_K_SET_TIME)
+	  canon_control_set_time(v);
   if ( init->caps->control_cmdlist ){
     int i=0;
     while(init->caps->control_cmdlist[i]){
