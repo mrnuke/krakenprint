@@ -192,6 +192,7 @@ pack_pixels3_6(unsigned char* buf,int len)
 #define CANON_CAP_w          0x8000000ul /* related to media type selection */
 #define CANON_CAP_s          0x10000000ul /* not sure of this yet: duplex-related? */
 #define CANON_CAP_u          0x20000000ul /* not sure of this yet: duplex-related? */
+#define CANON_CAP_N          0x40000000ul /* Data in ESC (N form */
 #define CANON_CAP_K_SET_TIME 0x80000000ul /* ESC [K needs SetTime command */
 
 #define CANON_CAP_STD0 (CANON_CAP_b|CANON_CAP_c|CANON_CAP_d|\
@@ -6657,8 +6658,18 @@ static void canon_write_block(stp_vars_t* v,canon_privdata_t* pd,unsigned char* 
     unsigned int length = end - start;
     if(!length)
         return;
-    stp_zfwrite("\033(F", 3, 1, v);
-    stp_put16_le(length, v);
+    if (pd->caps->features & CANON_CAP_N) {
+	/* Newer ESC (N data format. */
+	stp_zfwrite("\033(N", 3, 1, v);
+	if (length == pd->mode->raster_lines_per_block)
+		length = 0;
+	stp_put32_le(length + 1, v);
+	stp_zfwrite("F", 1, 1, v);
+    } else {
+	/* Tried and true ESC (F data format. */
+	stp_zfwrite("\033(F", 3, 1, v);
+	stp_put16_le(length, v);
+    }
     stp_zfwrite((const char *)start, length, 1, v);
 }
 
